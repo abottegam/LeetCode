@@ -39,21 +39,22 @@ At most 2 * 105 calls will be made to get and put.
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <utility>
 
 using namespace std;
 
 struct Node
 {
-    int data;
+    pair<int,int> data;
     Node *next;
     Node *prev;
 };
 
 class LRUCache
 {
-    Node* head = nullptr;
-    Node* tail = nullptr;
-    unordered_map<int, Node*> cache;
+    Node *head = nullptr;
+    Node *tail = nullptr;
+    unordered_map<int, Node *> cache;
     int size;
 
 public:
@@ -64,43 +65,71 @@ public:
 
     int get(int key)
     {
-        unordered_map<int, Node*>::const_iterator got = cache.find(key);
+        unordered_map<int, Node *>::const_iterator got = cache.find(key);
         if (got == cache.end())
         {
             return -1;
         }
-        return ;
+        pushToFront(got->second);
+        return got->second->data.second;
     }
 
     void put(int key, int value)
     {
-        Node* temp = new Node;
-        cache[key] = temp;
-        temp->data = value;
+        Node *temp = new Node;
+        cache[key] = temp; //if key diff than value add the difference in
+        temp->data = make_pair(key,value);
         temp->next = nullptr;
         temp->prev = nullptr;
 
-        if(head == nullptr){
-            temp->prev = tail;
-            head = temp;
+        if (head == nullptr)
+        {
+            head = tail = temp;
+        }
+        else
+        {
+            if (cache.size() > size)
+            {
+                deleteFromBack();
+            }
+            if(size == 1){
+                head = tail = temp;
+            }
+            else{
+                head->prev = temp;
+                temp->next = head;
+                head = temp;
+            }
+        }
+    }
+//to push to front after get
+    void pushToFront(Node *nuevo)
+    {
+        if (nuevo != head)
+        {
+            nuevo->prev->next = nuevo->next;
+            if (nuevo == tail)
+                tail = nuevo->prev;
+            else
+                nuevo->next->prev = nuevo->prev;
+            head->prev = nuevo;
+            nuevo->next = head;
+            nuevo->prev = nullptr;
+            head = nuevo;
+        }
+        
+    }
+
+    void deleteFromBack()
+    {
+        cache.erase(tail->data.first); // erase the key from map
+        if(tail == head){
+            tail = nullptr;
+            head = nullptr;
         }
         else{
-            if (cache.size() == size)
-            {
-                if(tail->prev != nullptr){
-                    cache.erase(tail->data);//erase the key from map
-                    tail->prev->next = tail->next;
-                } 
-            }
-            
-            temp->next = head;
-            head->prev = temp;
-            head = temp;
-        }
-
-        if (cache.size() > size)
-        {
-            cache.erase(cache.end());
+            tail->prev->next = nullptr;
+            tail = tail->prev;
         }
     }
 };
@@ -111,3 +140,17 @@ public:
  * int param_1 = obj->get(key);
  * obj->put(key,value);
  */
+
+int main()
+{
+    LRUCache *obj = new LRUCache(2);
+    obj->put(1, 1);
+    obj->put(2, 2);
+    int param_1 = obj->get(1); // return 1
+    obj->put(3, 3);            // LRU key was 2, evicts key 2, cache is {1=1, 3=3}
+    int param_2 = obj->get(2); // returns -1 (not found)
+    obj->put(4, 4);            // LRU key was 1, evicts key 1, cache is {4=4, 3=3}
+    int param_3 = obj->get(1); // return -1 (not found)
+    int param_4 = obj->get(3); // return 3
+    int param_5 = obj->get(4); // return 4
+}
